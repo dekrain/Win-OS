@@ -1,7 +1,7 @@
 // Win OS by DeKrain is JS rewrite of New Snap! OS by DeKrain created in Snap!
 
 var cnv, ctx;
-var colors, morphs, images, next, mouse;
+var colors, morphs, images, next, mouse, resources;
 var screen, runtime, font_size;
 
 // 2 functions from morphic.js (C) Jens Moenig
@@ -72,7 +72,7 @@ function init(fill) {
 	morphs = [];
 	images = [];
 	next = []; // Deprecated?
-	mouse = {x:0, y:0, down: false};
+	mouse = {x:0, y:0, down: false, last: false};
 	font_size = 15;
 	var offset = getDocumentPositionOf(cnv);
 	screen = {x: offset.x, y: offset.y, w: cnv.width, h: cnv.height};
@@ -83,8 +83,37 @@ function init(fill) {
 		mouse.y = evt.clientY - screen.y;
 	});
 	draw(); // Init background and variables
-	initGUIComponents();
-	loop();
+	waitForResources().then(function() {
+		initGUIComponents();
+		loop();
+	});
+}
+
+function waitForResources() {
+	resources = [{ type: 'image', name: 'dialog_icon', url: 'dialog.png', done: false, value: null }];
+	for (var res of resources) {
+		if (res.type === 'image') {
+			res.value = new Image();
+			res.value.src = res.url;
+			res.value.onload = ()=>{res.done = true; };
+		}
+	}
+	return new Promise(function f(rsv) {
+		setTimeout(function() {
+			for (var res of resources) {
+				if (!res.done) return new Promise(f);
+				rsv();
+			}
+		}, 1);
+	});
+}
+
+function getResource(name) {
+	for (var res of resources) {
+		if (res.name === name)
+			return res.value;
+	}
+	return null;
 }
 
 function initGUIComponents() {
@@ -115,7 +144,9 @@ function initGUIComponents() {
 	};
 	var mouse_down = createDummy([createState([createBox(mouse_down_pos.box, colors.on), createBox(mouse_down_pos.box, colors.off)], ()=>(mouse.down ? 0 : 1)), createText(mouse_down_pos.text, 'Mouse down', font_size, colors.font_light)]);
 	var shutdown = createClickable([0, 0, 70, 30], ()=>{next.push(()=>{ctx.fillStyle='#000000'; ctx.fillRect(0, 0, screen.w, screen.h); runtime.stop(); }); }, createBox([0, 0, 70, 30], colors.off, [createText([0, 15], 'SHUTDOWN', font_size, colors.font_light)]));
-	morphs.push(fps_bar, fps_toggle, mouse_down, shutdown);
+	var test_popup = ()=>{morphs.push(createSimplePopup('A popup', 'CLICK THE [OK] BUTTON', ()=>{morphs.push(createSimplePopup('YAY!!!', 'YOU CLICKED THE [OK] BUTTON!!!!!11!1!one!!1', ()=>{})); }, true)); };
+	test_popup();
+	morphs.push(fps_bar, fps_toggle, mouse_down, shutdown, createShortcutImg([10, 40], getResource('dialog_icon'), 'Test Popup', test_popup));
 }
 
 function loop() {
@@ -157,13 +188,12 @@ function logic() {
 					images.push(morph);
 					l(morph.children);
 					break;
+				case '$IMAGE':
+					images.push(morph);
+					break;
 				case '$CLICKABLE':
-					if (mouse.down && !morph.mouse && containsPoint(morph.bounds, mouse)) {
-						morph.mouse = true;
+					if (mouse.down && !mouse.last && containsPoint(morph.bounds, mouse))
 						morph.action(morph.box);
-					} else if (morph.mouse && !mouse.down) {
-						morph.mouse = false;
-					}
 					f(morph.box);
 					break;
 				case '$STATE':
@@ -177,6 +207,10 @@ function logic() {
 			}
 		});
 	})(morphs);
+	if (mouse.down && !mouse.last)
+		mouse.last = true;
+	else if (mouse.last && !mouse.down)
+		mouse.last = false;
 }
 
 function draw() {
@@ -192,6 +226,10 @@ function draw() {
 				pos = morph.bounds;
 				ctx.fillStyle = morph.color;
 				ctx.fillRect(pos[0], pos[1], pos[2], pos[3]);
+				break;
+			case '$IMAGE':
+				pos = morph.position;
+				ctx.drawImage(morph.image, pos[0], pos[1]);
 				break;
 			case '$TEXT':
 				pos = morph.position;
