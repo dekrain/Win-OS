@@ -101,9 +101,9 @@ function waitForResources() {
 	return new Promise(function f(rsv) {
 		setTimeout(function() {
 			for (var res of resources) {
-				if (!res.done) return new Promise(f);
-				rsv();
+				if (!res.done) rsv(new Promise(f));
 			}
+			rsv();
 		}, 1);
 	});
 }
