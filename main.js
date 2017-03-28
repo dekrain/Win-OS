@@ -2,7 +2,7 @@
 
 var cnv, ctx;
 var colors, morphs, images, next, mouse, resources;
-var screen, runtime, font_size;
+var winScreen, runtime, font_size;
 
 // 2 functions from morphic.js (C) Jens Moenig
 function getDocumentPositionOf(aDOMelement) {
@@ -75,12 +75,12 @@ function init(fill) {
 	mouse = {x:0, y:0, down: false, last: false};
 	font_size = 15;
 	var offset = getDocumentPositionOf(cnv);
-	screen = {x: offset.x, y: offset.y, w: cnv.width, h: cnv.height};
+	winScreen = {x: offset.x, y: offset.y, w: cnv.width, h: cnv.height};
 	cnv.addEventListener('mousedown', ()=>{mouse.down = true; });
 	cnv.addEventListener('mouseup', ()=>{mouse.down = false; });
 	cnv.addEventListener('mousemove', (evt)=>{
-		mouse.x = evt.clientX - screen.x;
-		mouse.y = evt.clientY - screen.y;
+		mouse.x = evt.clientX - winScreen.x;
+		mouse.y = evt.clientY - winScreen.y;
 	});
 	draw(); // Init background and variables
 	waitForResources().then(function() {
@@ -119,8 +119,8 @@ function getResource(name) {
 function initGUIComponents() {
 	var fps_bar = createState([createText([80, 20], ()=>('FPS '+runtime.fps_last), font_size, colors.font_light), createEmpty()]);
 	var fps_toggle_pos = {
-		box: [screen.w - 70, 30, 60, 30],
-		text: [screen.w - 70, 50]
+		box: [winScreen.w - 70, 30, 60, 30],
+		text: [winScreen.w - 70, 50]
 	};
 	var fps_toggle = createClickable(
 			fps_toggle_pos.box,
@@ -139,11 +139,11 @@ function initGUIComponents() {
 			])
 		);
 	var mouse_down_pos = {
-		box: [screen.w - 40, 0, 40, 30],
-		text: [screen.w - 140, 20]
+		box: [winScreen.w - 40, 0, 40, 30],
+		text: [winScreen.w - 140, 20]
 	};
 	var mouse_down = createDummy([createState([createBox(mouse_down_pos.box, colors.on), createBox(mouse_down_pos.box, colors.off)], ()=>(mouse.down ? 0 : 1)), createText(mouse_down_pos.text, 'Mouse down', font_size, colors.font_light)]);
-	var shutdown = createClickable([0, 0, 70, 30], ()=>{next.push(()=>{ctx.fillStyle='#000000'; ctx.fillRect(0, 0, screen.w, screen.h); runtime.stop(); }); }, createBox([0, 0, 70, 30], colors.off, [createText([0, 15], 'SHUTDOWN', font_size, colors.font_light)]));
+	var shutdown = createClickable([0, 0, 70, 30], ()=>{next.push(()=>{ctx.fillStyle='#000000'; ctx.fillRect(0, 0, winScreen.w, winScreen.h); runtime.stop(); }); }, createBox([0, 0, 70, 30], colors.off, [createText([0, 15], 'SHUTDOWN', font_size, colors.font_light)]));
 	var test_popup = ()=>{morphs.push(createSimplePopup('A popup', 'CLICK THE [OK] BUTTON', ()=>{morphs.push(createSimplePopup('YAY!!!', 'YOU CLICKED THE [OK] BUTTON!!!!!11!1!one!!1', ()=>{})); }, true)); };
 	test_popup();
 	morphs.push(fps_bar, fps_toggle, mouse_down, shutdown, createShortcutImg([10, 40], getResource('dialog_icon'), 'Test Popup', test_popup));
@@ -216,9 +216,9 @@ function logic() {
 function draw() {
 	// var padding = 5;
 	ctx.fillStyle = colors.bg; // Background
-	ctx.fillRect(0, 0, screen.w, screen.h);
+	ctx.fillRect(0, 0, winScreen.w, winScreen.h);
 	ctx.fillStyle = colors.taskbar; // Task bar
-	ctx.fillRect(0, 0, screen.w, 30);
+	ctx.fillRect(0, 0, winScreen.w, 30);
 	for (var morph of images) { // Render all morphs
 		let pos;
 		switch (morph.type) {
